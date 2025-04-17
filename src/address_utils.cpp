@@ -24,7 +24,8 @@ std::string derive_address(const std::string& mnemonic, const std::string& path,
     uint8_t seed[64] = {0};
     mnemonic_to_seed(mnemonic, passphrase, seed);
     HDNode node;
-    const ecdsa_curve* curve = get_curve_by_name(SECP256K1_NAME);
+    const curve_info* curve_info = get_curve_by_name(SECP256K1_NAME);
+    const ecdsa_curve* curve = curve_info->params;
     if (!hdnode_from_seed(seed, 64, SECP256K1_NAME, &node))
         throw std::runtime_error("Erro ao gerar HDNode");
     if (!hdnode_private_ckd_prime(&node, 44)) // Exemplo: m/44'
@@ -40,7 +41,9 @@ std::string derive_address(const std::string& mnemonic, const std::string& path,
         hdnode_fill_public_key(&node);
         memcpy(pubkey, node.public_key, 33);
         uint8_t hash[20];
-        ripemd160(sha256(pubkey, 33, NULL), 32, hash);
+        uint8_t sha[32];
+        sha256(pubkey, 33, sha, 0);  // Último parâmetro é o HMAC flag (0 = desativado)
+        ripemd160(sha, 32, hash);
         uint8_t addr_bytes[21];
         addr_bytes[0] = (coin == "btc") ? 0x00 : 0x30; // BTC:0x00, LTC:0x30
         memcpy(addr_bytes+1, hash, 20);
